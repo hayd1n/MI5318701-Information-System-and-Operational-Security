@@ -99,7 +99,7 @@ Remove-Item -Path $sysmonZip -Force
 
 ##### 4.2.0. 找出所需資料的屬性索引（Index）方法
 
-**範例：**列出 `Event ID 3` 事件的所有屬性，找出所需的欄位索引，如 `SourceIP` 和 `DestinationIP` 的索引為 `9` 和 `14` 。
+**範例：** 列出 `Event ID 3` 事件的所有屬性，找出所需的欄位索引，如 `SourceIP` 和 `DestinationIP` 的索引為 `9` 和 `14` 。
 
 ```powershell
 Get-WinEvent -FilterHashtable @{LogName='Microsoft-Windows-Sysmon/Operational'; Id=3} |
