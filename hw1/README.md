@@ -1,4 +1,16 @@
-# Homework 1
+# Cybersecurity Homework 1
+
+> Course No: MI5318701
+>
+> Course Name: 資訊系統與作業安全 Information System and Operational Security
+>
+> Professor: 邱建樺
+>
+> Author:
+>
+> - 張皓鈞 Hayden Chang (B11030202)
+> - 鄭健廷 Allen Cheng (B11130225)
+> - 珍妮❓
 
 ## Windows 安全監控與事件分析報告
 
