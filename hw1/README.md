@@ -4,17 +4,6 @@
 
 ​	在整個過程中，我們利用內建的 PowerShell 指令來查詢系統進程、服務及安全事件，並進一步透過 Sysmon 來監控進程創建、網路連線以及檔案建立事件。
 
-### 0. 找出所需資料的屬性索引（Index）方法
-
-範例：列出 `Event ID 3` 事件的所有屬性，找出所需的欄位索引，如 `SourceIP` 和 `DestinationIP` 的索引為 `9` 和 `14` 。
-
-```powershell
-Get-WinEvent -FilterHashtable @{LogName='Microsoft-Windows-Sysmon/Operational'; Id=3} |
-    Select-Object -First 1 | Format-List -Property *
-```
-
-![image-20250318003645924](assets/image-20250318003645924.png)
-
 ### 1. 查詢前 10 筆當前執行的進程列表
 
 ```powershell
@@ -107,6 +96,17 @@ Remove-Item -Path $sysmonZip -Force
 #### 4.2 Sysmon 事件的查詢與屬性索引解析
 
 ​	Sysmon 安裝完畢後，系統會產生大量監控事件，這些事件記錄在 `Microsoft-Windows-Sysmon/Operational` 日誌中。接下來，我們根據事件 ID 分別查詢不同類型的事件。
+
+##### 4.2.0. 找出所需資料的屬性索引（Index）方法
+
+**範例：**列出 `Event ID 3` 事件的所有屬性，找出所需的欄位索引，如 `SourceIP` 和 `DestinationIP` 的索引為 `9` 和 `14` 。
+
+```powershell
+Get-WinEvent -FilterHashtable @{LogName='Microsoft-Windows-Sysmon/Operational'; Id=3} |
+    Select-Object -First 1 | Format-List -Property *
+```
+
+![image-20250318003645924](assets/image-20250318003645924.png)
 
 ##### 4.2.1 進程創建事件 (Event ID: 1)
 
