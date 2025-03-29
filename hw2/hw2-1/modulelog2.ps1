@@ -1,0 +1,1 @@
+Get-WinEvent -FilterHashtable @{Logname='Microsoft-Windows-PowerShell/Operational'}

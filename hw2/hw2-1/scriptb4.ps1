@@ -1,0 +1,1 @@
+Get-WinEvent -FilterHashtable @{Logname='Microsoft-Windows-PowerShell/Operational'; StartTime="2025/3/28 下午 09:57:37"; EndTime="2025/3/28 下午 09:57:39"; ID=4104} | Format-List
