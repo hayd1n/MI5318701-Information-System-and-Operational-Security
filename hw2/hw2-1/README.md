@@ -1,4 +1,4 @@
-# Cybersecurity Homework 2
+# Cybersecurity Homework 2-1
 
 > Course No: MI5318701
 >
@@ -12,37 +12,44 @@
 > - 鄭健廷 Allen Cheng (B11130225)
 > - 高靜宜 Genie Gao (M11309208)
 
-# 第一題
+## 目錄
+
+[toc]
+
+
 
 ## 瞭解並啟用 PowerShell 的三種常見紀錄功能
- 
- 在第一題中，我們透過群組原則編輯器 gpedit.msc 開啟三種日誌功能，再使用內建 PowerShell 指令查詢 PowerShell 的事件紀錄，最後比較三種日誌的事件記錄的內容差異。
+
+在本實驗中，我們透過群組原則編輯器 gpedit.msc 開啟三種日誌功能，再使用內建 PowerShell 指令查詢 PowerShell 的事件紀錄，最後比較三種日誌的事件記錄的內容差異。
+
+
 
 ### 1.  透過群組原則 (`gpedit.msc`) 啟用 PowerShell 日誌功能
 
-#### (1) 開啟本機群組原則編輯器
+#### 1.1 開啟本機群組原則編輯器
 ```shell
 Win + R → 輸入 gpedit.msc → 按 Enter
 ```
 
- #### (2) 啟用 Module Logging
+#### 1.2 啟用 Module Logging
 - 位置：`電腦設定 → 系統管理範本 → Windows 元件 → Windows PowerShell`
 - 設定：啟用「啟用 PowerShell 模組記錄」(`Enable Module Logging`)
 - 新增要記錄的模組名稱（可輸入 `*` 代表所有模組）
 
-#### (3) 啟用 Script Block Logging
+#### 1.3 啟用 Script Block Logging
 - 位置：與 Module Logging 相同
 - 設定：啟用「啟用記錄 PowerShell 指令碼區塊」(`Enable Script Block Logging`)
 
-#### (4) 啟用 Transcript Logging
+#### 1.4 啟用 Transcript Logging
 - 位置：`電腦設定 → 系統管理範本 → Windows 元件 → Windows PowerShell`
 - 設定：啟用 **「啟用 PowerShell 轉錄」** (`Turn on PowerShell Transcription`)
 - 設定存放日誌的路徑（如 `C:\PowerShell_Logs`）
 
 ![Snipaste_2025-03-28_14-37-16](assets/Snipaste_2025-03-28_14-37-16.jpg)
+
 ![Snipaste_2025-03-28_14-58-45](assets/Snipaste_2025-03-28_14-58-45.jpg)
 
----
+
 
 ### 2. 撰寫與執行 PowerShell 測試指令
 
@@ -62,11 +69,11 @@ Get-WmiObject -Class Win32_Process | Format-Table ProcessId, ParentProcessId, Na
 
 ![Snipaste_2025-03-28_15-38-56](assets/Snipaste_2025-03-28_15-38-56.jpg)
 
----
+
 
 ### 3. 查詢 PowerShell 事件紀錄
 
-#### (1) 查詢 PowerShell 作業事件日誌
+#### 3.1 查詢 PowerShell 作業事件日誌
 
 ```powershell
 Get-WinEvent -FilterHashtable @{Logname='Microsoft-Windows-PowerShell/Operational'}
@@ -79,7 +86,7 @@ Get-WinEvent -FilterHashtable @{Logname='Microsoft-Windows-PowerShell/Operationa
 ![Snipaste_2025-03-28_21-16-29](assets/Snipaste_2025-03-28_21-16-29.jpg)
 
 
-#### (2) 查詢 Event ID 4103（Module Logging）
+#### 3.2 查詢 Event ID 4103（Module Logging）
 
 ```powershell
 Get-WinEvent -FilterHashtable @{Logname='Microsoft-Windows-PowerShell/Operational'; StartTime="2025/3/28 下午 09:14:29"; EndTime="2025/3/28 下午 09:14:31"; ID=4103}
@@ -87,7 +94,7 @@ Get-WinEvent -FilterHashtable @{Logname='Microsoft-Windows-PowerShell/Operationa
 
 ![Snipaste_2025-03-28_21-20-37](assets/Snipaste_2025-03-28_21-20-37.jpg)
 
-#### (3) 查詢 Event ID 4104（Script Block Logging）
+#### 3.3 查詢 Event ID 4104（Script Block Logging）
 
 ```powershell
 Get-WinEvent -FilterHashtable @{Logname='Microsoft-Windows-PowerShell/Operational'; ID=4104}
@@ -95,7 +102,7 @@ Get-WinEvent -FilterHashtable @{Logname='Microsoft-Windows-PowerShell/Operationa
 
 ![Snipaste_2025-03-29_22-07-35](assets/Snipaste_2025-03-29_22-07-35.jpg)
 
-#### (4) PowerShell 指令 Base64 編碼處理（Script Block Logging 腳本測試）
+#### 3.4 PowerShell 指令 Base64 編碼處理（Script Block Logging 腳本測試）
 
 ```powershell
 $Command = 'Write-Host (Get-Date); Get-Hotfix'
@@ -108,6 +115,7 @@ $EncodedCommand
 接著，腳本透過 `[System.Text.Encoding]::Unicode.GetBytes($Command)` 將指令轉換為 Unicode 編碼的位元組陣列，再利用 `[Convert]::ToBase64String($Bytes)` 將其編碼為 Base64 格式，最後儲存至 `$EncodedCommand` 變數。
 
 **主要用途：**
+
   - **遠端執行 PowerShell 指令**：可透過 `powershell.exe -EncodedCommand $EncodedCommand` 在遠端系統執行這段 Base64 編碼的指令，而不必使用明文指令，避免特殊字元解析問題。
   - **繞過 PowerShell 命令行限制**：某些環境（如 CMD、某些端點安全解決方案）可能會 限制直接輸入 PowerShell 指令，但透過 Base64 編碼可以 繞過部分限制，讓指令仍然能夠執行。
   - **防止指令被輕易檢視或修改**：雖然 Base64 不是加密技術，但將指令轉換為 Base64 可以 提高一定的隱蔽性，減少指令直接暴露的風險。
@@ -119,7 +127,7 @@ $EncodedCommand
 
 ![Snipaste_2025-03-28_21-54-56](assets/Snipaste_2025-03-28_21-54-56.jpg)
 
-##### (4.1) 執行 Base64 編碼
+##### 3.4.1 執行 Base64 編碼
 
 ```powershell
 powershell -Encoded VwByAGkAdABlAC0ASABvAHMAdAAgACgARwBlAHQALQBEAGEAdABlACkAOwAgAEcAZQB0AC0ASABvAHQAZgBpAHgA
@@ -133,7 +141,7 @@ powershell -Encoded VwByAGkAdABlAC0ASABvAHMAdAAgACgARwBlAHQALQBEAGEAdABlACkAOwAg
 
 ![Snipaste_2025-03-28_21-57-57](assets/Snipaste_2025-03-28_21-57-57.jpg)
 
-##### (4.2) 執行 Base64 編碼後查詢 Event ID 4104 詳細資料
+##### 3.4.2 執行 Base64 編碼後查詢 Event ID 4104 詳細資料
 
 ```powershell
 Get-WinEvent -FilterHashtable @{Logname='Microsoft-Windows-PowerShell/Operational'; StartTime="2025/3/28 下午 09:57:37"; EndTime="2025/3/28 下午 09:57:39"; ID=4104} | Format-List
@@ -143,7 +151,7 @@ Get-WinEvent -FilterHashtable @{Logname='Microsoft-Windows-PowerShell/Operationa
 
 ![Snipaste_2025-03-28_22-03-20](assets/Snipaste_2025-03-28_22-03-20.jpg)
 
-#### (5) 查詢 Transcript Logging 記錄
+#### 3.5 查詢 Transcript Logging 記錄
 
 ```powershell
 Start-Transcript
@@ -153,7 +161,7 @@ Start-Transcript
 
 ![Snipaste_2025-03-28_23-18-06](assets/Snipaste_2025-03-28_23-18-06.jpg)
 
----
+
 
 ### 4. 比較三種日誌的內容差異
 
@@ -163,7 +171,16 @@ Start-Transcript
 | **Script Block Logging** | `4104` | 記錄執行的指令碼內容，包括動態產生的指令碼 | 可用於審查指令碼內容 | 可能產生大量日誌，影響效能 |
 | **Transcript Logging** | `N/A (純文字)` | 完整記錄 PowerShell 執行的所有輸入輸出 | 提供完整執行紀錄 | 不支援事件檢視器篩選 |
 
----
 
-### 5. 結論
-透過這三種日誌功能，可以更有效地監控和審查 PowerShell 執行的內容，提升系統安全性！
+
+### 5. 心得與討論
+
+透過本次實驗，我們對 PowerShell 的三種常見紀錄功能有了更深入的了解與實作體驗，這些功能在資安事件鑑識與異常行為分析上扮演了重要的角色。
+
+​	**Module Logging** 提供了我們了解系統中哪些 PowerShell 模組被載入與使用的機會，雖然它無法記錄完整的指令內容，但若搭配指令頻率分析，仍能有效協助資安人員掌握可能的異常操作。**Script Block Logging** 則是一項非常強大的工具，它能夠記錄執行的完整指令碼內容，甚至包括在執行期間才動態生成的指令，這對於分析如 Base64 編碼、混淆腳本等常見的攻擊技巧具有極高價值。不過它產生的事件數量龐大，若沒有妥善規劃儲存與分析策略，容易造成效能負擔。**Transcript Logging** 則是我們認為最貼近「錄影回放」概念的紀錄方式，能忠實呈現使用者在 PowerShell 中輸入與輸出的所有內容，是進行完整活動重現時不可或缺的工具。
+
+​	在實作過程中，我們特別體會到「**紀錄的完整性與可讀性**」與「**系統效能與安全風險**」之間的平衡。例如，雖然 Script Block Logging 提供了最豐富的紀錄細節，但若用於大量自動化腳本或大型企業環境，會導致事件日誌快速膨脹，進而影響系統穩定性；而 Transcript Logging 雖然記錄詳細，卻無法透過事件檢視器篩選與整合進 SIEM 系統中進行即時分析，這些都是實務部署時必須考量的關鍵因素。
+
+​	此外，透過實作 Base64 編碼的 PowerShell 指令，我們也更加認識到攻擊者如何運用這些手法來規避偵測，這讓我們深刻體會到，光是開啟日誌功能是不夠的，更重要的是能夠解讀日誌背後的意圖，並結合實際場景加以判斷。
+
+​	這次實驗不僅讓我們熟悉了 PowerShell 日誌的技術細節，更加深了我們對於日誌在資訊安全防護與事件回溯中重要性的理解。未來若有機會部署相關防禦機制，我們會更有意識地考量各種紀錄功能的搭配與資源配置，進而達到更有效率且更全面的安全監控。
