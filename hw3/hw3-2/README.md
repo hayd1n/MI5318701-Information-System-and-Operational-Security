@@ -40,11 +40,11 @@ sudo systemctl start auditd
 sudo systemctl enable auditd
 ```
 
-![env](./assets/2025-04-22 11.04.02.png)
+![env](./assets/2025-04-22-11.04.02.png)
 
-![install](./assets/2025-04-22 11.06.28.png)
+![install](./assets/2025-04-22-11.06.28.png)
 
-![start](./assets/2025-04-22 11.07.44.png)
+![start](./assets/2025-04-22-11.07.44.png)
 
 
 
@@ -67,7 +67,7 @@ sudo auditctl -w /var/spool/cron/crontabs/root -p wa -k watch_crontab
 sudo auditctl -l
 ```
 
-![set](./assets/2025-04-22 11.10.38.png)
+![set](./assets/2025-04-22-11.10.38.png)
 
 
 
@@ -84,9 +84,9 @@ echo "# test" >> ~/.bashrc
 sudo crontab -e
 ```
 
-![test](./assets/2025-04-22 11.15.14.png)
+![test](./assets/2025-04-22-11.15.14.png)
 
-![editCrontab](./assets/2025-04-22 11.16.53.png)
+![editCrontab](./assets/2025-04-22-11.16.53.png)
 
 
 
@@ -104,7 +104,7 @@ sudo ausearch -k watch_crontab
 sudo aureport -f    # 檔案存取紀錄彙整
 ```
 
-![search](./assets/2025-04-22 11.15.58.png)
+![search](./assets/2025-04-22-11.15.58.png)
 
 
 
