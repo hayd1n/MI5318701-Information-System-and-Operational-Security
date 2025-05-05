@@ -49,7 +49,7 @@ ELK Stack 的核心元件皆部署於一台 Ubuntu 24.04 虛擬機中，此虛�
 > - Proxmox VE 左側架構：顯示目前有多台虛擬機，包含 elk-siem（100）、storeos、elk-win11 等。 
 > - 主控台操作記錄：顯示 root@pam 進行的啟動或變更操作。
 
-![S__21078023_0](assets/S__21078023_0.png)
+![S__21078023_0](assets/5.png)
 
 
 
@@ -63,13 +63,191 @@ Kibana 是用來視覺化 Elasticsearch 資料的工具，支援 Dashboard、Dis
 > - 透過 Kibana，可建立自訂的 Dashboard，以監控系統指標與安全事件。
 > - 支援 KQL（Kibana Query Language），進行進階資料查詢與分析。
 
-![Snipaste_2025-04-25_15-10-42](assets/Snipaste_2025-04-25_15-10-42.jpg)
+![Snipaste_2025-04-25_15-10-42](assets/15.jpg)
+
+#### 2.1 前置作業（下載 GPG 金鑰與設定套件來源）
+
+```bash
+sudo apt update
+sudo apt install -y apt-transport-https curl gnupg
+curl -fsSL https://artifacts.elastic.co/GPG-KEY-elasticsearch | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/elastic.gpg
+echo "deb [signed-by=/etc/apt/trusted.gpg.d/elastic.gpg] https://artifacts.elastic.co/packages/8.x/apt stable main" | \
+  sudo tee /etc/apt/sources.list.d/elastic-8.x.list
+sudo apt update
+```
+
+#### 2.2 安裝 Elasticsearch
+
+```bash
+sudo apt install elasticsearch
+```
+
+![Screenshot 2025-05-05 at 12.20.10 AM](assets/1.png)
+
+初次安裝產生的密碼：`ImYFfIMhpz*lDaL5oGMs`
+
+#### 2.3 編輯設定檔
+
+```bash
+sudo hx /etc/elasticsearch/elasticsearch.yml
+```
+
+![Screenshot 2025-05-06 at 12.43.56 AM](assets/2.png)
+
+#### 2.4 開機啟動
+
+```bash
+sudo systemctl enable elasticsearch
+```
+
+#### 2.5 啟動程式
+
+```bash
+sudo systemctl start elasticsearch
+```
+
+#### 2.6 查看運行狀態
+
+```bash
+sudo systemctl status elasticsearch
+```
+
+![Screenshot 2025-05-06 at 12.46.41 AM](assets/3.png)
+
+#### 2.7 測試是否運作成功
+
+```bash
+curl -k https://localhost:9200 -u elastic
+```
+
+![Screenshot 2025-05-06 at 1.17.07 AM](assets/16.png)
+
+### 3. 安裝 Kibana
+
+#### 3.1 安裝 Kibana
+
+```bash
+sudo apt install kibana
+```
+
+#### 3.2 設定 kibana_system 帳號的密碼 (透過 elasticsearch API)
+
+```bash
+sudo curl -X POST https://localhost:9200/_security/user/kibana_system/_password \
+  -u elastic \
+  -H "Content-Type: application/json" \
+  -d '{"password": "KibanaPass123!"}' \
+  --cacert /etc/elasticsearch/certs/http_ca.crt
+```
+
+#### 3.3 測試 kibana_system 帳號密碼
+
+```bash
+curl -k https://localhost:9200 -u kibana_system
+```
+
+![Screenshot 2025-05-06 at 1.20.11 AM](assets/17.png)
+
+#### 3.4 編輯 Kibana 設定檔
+
+```bash
+sudo hx /etc/kibana/kibana.yml
+```
+
+```
+server.host: "0.0.0.0"
+elasticsearch.hosts: ["https://localhost:9200"]
+elasticsearch.username: "kibana_system"
+elasticsearch.password: "KibanaPass123!"
+elasticsearch.ssl.verificationMode: none
+```
+
+![Screenshot 2025-05-06 at 1.24.05 AM](assets/18.png)
+
+![Screenshot 2025-05-06 at 2.47.12 AM](assets/26.png)
+
+#### 3.4 設為開機自動啟動
+
+```bash
+sudo systemctl enable kibana
+```
+
+#### 3.5 啟動程式
+
+```bash
+sudo systemctl start kibana
+```
+
+#### 3.6 查詢啟動執行狀況
+
+```bash
+sudo journalctl -u kibana.service -f
+```
+
+#### 3.7 測試是否運作成功
+
+- 查詢 `5601` 端口是否啟用
+
+  ```bash
+  ss -tulnp | grep 5601
+  ```
+
+  ```
+  tcp   LISTEN 0      511                                0.0.0.0:5601      0.0.0.0:*
+  ```
+
+- 測試 Web 是否可以訪問
+
+  ```bash
+  curl -I http://localhost:5601
+  ```
+
+  ```
+  HTTP/1.1 302 Found
+  location: /login?next=%2F
+  x-content-type-options: nosniff
+  referrer-policy: strict-origin-when-cross-origin
+  permissions-policy: camera=(), display-capture=(), fullscreen=(self), geolocation=(), microphone=(), web-share=()
+  cross-origin-opener-policy: same-origin
+  content-security-policy: script-src 'report-sample' 'self'; worker-src 'report-sample' 'self' blob:; style-src 'report-sample' 'self' 'unsafe-inline'
+  content-security-policy-report-only: form-action 'report-sample' 'self'
+  kbn-name: elk-siem
+  kbn-license-sig: 3d2445a793288e80a423e3f455a94598e67d64aed945e49bb1567287759c8ce4
+  cache-control: private, no-cache, no-store, must-revalidate
+  content-length: 0
+  Date: Mon, 05 May 2025 19:06:22 GMT
+  Connection: keep-alive
+  Keep-Alive: timeout=120
+  ```
+
+![Screenshot 2025-05-06 at 1.29.40 AM](assets/20.png)
+
+### 4. 建立 Fleet Server 與註冊 Elastic Agent
+
+#### 4.1 安裝 Fleet Server
+
+- Linux Tar
+
+  ```bash
+  curl -L -O https://artifacts.elastic.co/downloads/beats/elastic-agent/elastic-agent-8.18.0-linux-x86_64.tar.gz 
+  tar xzvf elastic-agent-8.18.0-linux-x86_64.tar.gz
+  cd elastic-agent-8.18.0-linux-x86_64
+  sudo ./elastic-agent install --url=https://192.168.1.106:8220 --enrollment-token=LUdESG5KWUI1TTdZQ0xLYW5LZVc6VElkcU1GUFM1SVBRaGlQSGlnUVV6QQ==
+  ```
+
+- Windows
+
+  ```powershell
+  $ProgressPreference = 'SilentlyContinue'
+  Invoke-WebRequest -Uri https://artifacts.elastic.co/downloads/beats/elastic-agent/elastic-agent-8.18.0-windows-x86_64.zip -OutFile elastic-agent-8.18.0-windows-x86_64.zip 
+  Expand-Archive .\elastic-agent-8.18.0-windows-x86_64.zip -DestinationPath .
+  cd elastic-agent-8.18.0-windows-x86_64
+  .\elastic-agent.exe install --url=https://192.168.1.106:8220 --enrollment-token=LUdESG5KWUI1TTdZQ0xLYW5LZVc6VElkcU1GUFM1SVBRaGlQSGlnUVV6QQ==
+  ```
 
 
 
-### 3. 建立 Fleet Server 與註冊 Elastic Agent
-
-#### 3.1 檢查 Fleet 管理介面
+#### 4.2 檢查 Fleet 管理介面
 
 在 Elastic Stack 架構中，Fleet 是用來管理 Elastic Agent 的集中式控制台，負責監控所有已註冊的 Agent 運行狀態、健康度與資料流量。
 進入 Kibana Fleet 管理介面，我們可以看到目前的兩台已註冊的 Elastic Agent 狀態。
@@ -91,11 +269,11 @@ Kibana 是用來視覺化 Elasticsearch 資料的工具，支援 Dashboard、Dis
 > - 本次實作驗證結果：
 >   目前兩台主機 (elk-siem 和 elk-win11) 都已成功註冊並正常運作，顯示 ELK 架構已經成功整合。
 
-![S__21078025_0](assets/S__21078025_0.png)
+![S__21078025_0](assets/7.png)
 
 
 
-#### 3.2 瀏覽資料流（Data Streams）畫面
+#### 4.3 瀏覽資料流（Data Streams）畫面
 
 完成 Elastic Agent 註冊與 Fleet 管理設定後，接著需要確認資料是否已被成功寫入 Elasticsearch。最直接的方式就是查看 Data Streams（資料流）畫面，它能夠清楚顯示來自各個 Agent 的資料來源、類型與整合模組。
 
@@ -115,13 +293,13 @@ Kibana 是用來視覺化 Elasticsearch 資料的工具，支援 Dashboard、Dis
 >     檢查 windows.perfmon 是否成功收集效能計數器
 >   可依不同維度（類型、來源、命名空間）進行管理與過濾
 
-![S__21078026_0](assets/S__21078026_0.png)
+![S__21078026_0](assets/8.png)
 
 
 
-### 4. Linux 主機安裝 Elastic Agent
+### 5. Linux 主機安裝 Elastic Agent
 
-在 elk-siem（Ubuntu）主機上安裝 Elastic Agent，並連線至已建立的 Fleet Server。
+在 `elk-siem`（Ubuntu）主機上安裝 Elastic Agent，並連線至已建立的 Fleet Server。
 
 安裝步驟：
 - 前往 Kibana → Fleet → Add Agent，選擇 Platform 為 Linux 並選擇安裝方式。
@@ -140,9 +318,9 @@ sudo ./elastic-agent install --url=https://<fleet-server-ip>:8220 --enrollment-t
 
 
 
-### 5. 確認 Linux Agent 上線
+### 6. 確認 Linux Agent 上線
 
-#### 5.1 查看 Agent 詳細狀態
+#### 6.1 查看 Agent 詳細狀態
 
 在完成 Elastic Agent 安裝與連接 Fleet Server 之後，可透過 Fleet 管理介面查看各 Agent 的詳細狀態，以確認其健康情況與系統資源耗用。
 
@@ -161,11 +339,11 @@ sudo ./elastic-agent install --url=https://<fleet-server-ip>:8220 --enrollment-t
 >   若系統資源異常或 Agent 離線，可第一時間進行排查
 >   適用於監控環境的健全性管理與資源分析
 
-![S__21078027_0](assets/S__21078027_0.png)
+![S__21078027_0](assets/9.png)
 
 
 
-#### 5.2 監控 Agent 指標與效能
+#### 6.2 監控 Agent 指標與效能
 
 完成 Agent 安裝與連線後，Elastic 提供可視化的 Metrics Dashboard 以即時掌握每一台 Agent 的效能表現與系統資源狀況。
 
@@ -182,13 +360,13 @@ sudo ./elastic-agent install --url=https://<fleet-server-ip>:8220 --enrollment-t
 >   是維運工程師進行健康檢查與資源監控的重要工具
 >   提供近乎即時的系統回饋，確保 ELK 架構穩定運作
 
-![S__21078028_0](assets/S__21078028_0.png)
+![S__21078028_0](assets/10.png)
 
 
 
-### 6. Windows 主機安裝 Elastic Agent
+### 7. Windows 主機安裝 Elastic Agent
 
-為模擬企業中常見的日誌來源設備，我們於 Proxmox VE 建立一台 Windows 11 IoT Enterprise LTSC 虛擬機，命名為 elk-win11，用於安裝 Elastic Agent 並上傳日誌至 ELK Stack。
+為模擬企業中常見的日誌來源設備，我們於 Proxmox VE 建立一台 Windows 11 IoT Enterprise LTSC 虛擬機，命名為 `elk-win11`，用於安裝 Elastic Agent 並上傳日誌至 ELK Stack。
 
 
 > **重點說明：**
@@ -205,13 +383,13 @@ sudo ./elastic-agent install --url=https://<fleet-server-ip>:8220 --enrollment-t
 >   IP 位址：192.168.1.113
 > - 此機器為日誌來源之一，安裝 Elastic Agent 後將傳送事件與系統指標至 ELK Stack。
 
-![S__21078024_0](assets/S__21078024_0.png)
+![S__21078024_0](assets/6.png)
 
 
 
-### 7. 確認 Windows Agent 上線
+### 8. 確認 Windows Agent 上線
 
-#### 7.1 檢視 Windows Agent 詳細資訊
+#### 8.1 檢視 Windows Agent 詳細資訊
 
 除了 Fleet Server 所在的 Linux 主機（elk-siem），Windows 主機（elk-win11）同樣安裝了 Elastic Agent，並採用名為 windows-policy 的資料收集政策。以下為該 Agent 的詳細資訊畫面：
 
@@ -228,11 +406,11 @@ sudo ./elastic-agent install --url=https://<fleet-server-ip>:8220 --enrollment-t
 >   Platform：Windows
 >   Logs / Metrics 監控：已啟用
 
-![S__21078029_0](assets/S__21078029_0.png)
+![S__21078029_0](assets/11.png)
 
 
 
-#### 7.2 監控 Windows Agent 運作效能
+#### 8.2 監控 Windows Agent 運作效能
 
 為確保 Elastic Agent 在 Windows 系統上穩定運作，我們可透過 Dashboard 即時監控其效能與資料收集狀況。
 
@@ -248,11 +426,11 @@ sudo ./elastic-agent install --url=https://<fleet-server-ip>:8220 --enrollment-t
 >   記憶體使用：約265MB
 >   CPU Throttling / Max Queue Usage：無限制情況，佇列正常
 
-![S__21078030_0](assets/S__21078030_0.png)
+![S__21078030_0](assets/12.png)
 
 
 
-### 8. 查看 Discover 與資料索引狀況
+### 9. 查看 Discover 與資料索引狀況
 
 完成 Elastic Stack 架構建置與 Agent 部署後，即可利用 Kibana 的 Discover 工具查閱實際收集到的日誌資料。
 
@@ -270,15 +448,15 @@ sudo ./elastic-agent install --url=https://<fleet-server-ip>:8220 --enrollment-t
 >   搭配 KQL（Kibana Query Language）搜尋特定行為、錯誤或異常活動
 >   為資安分析與系統維運提供基礎資料源
 
-![S__21078031_0](assets/S__21078031_0.png)
+![S__21078031_0](assets/13.png)
 
 
 
-### 9. 撰寫 KQL 查詢進行資料搜尋
+### 10. 撰寫 KQL 查詢進行資料搜尋
 
 利用 Kibana Discover 功能與 KQL 查詢語法，篩選出 Windows 安全性日誌中的成功登入事件（event.code: 4624）。
 
-```bash
+```kql
 event.code: "4624" and winlog.channel: "Security"
 ```
 
@@ -293,16 +471,70 @@ event.code: "4624" and winlog.channel: "Security"
 >   追蹤可疑帳號登入行為與來源裝置
 
 
-![S__21078032_0](assets/S__21078032_0.png)
+![S__21078032_0](assets/14.png)
 
+```kql
+event.code: "1" and winlog.channel: "Microsoft-Windows-Sysmon/Operational"
+```
 
+> **重點說明：**
+>
+> - 畫面說明：
+>   中央區域 顯示時間分布圖（Histogram），可視覺化事件發生時間，協助快速判斷是否有異常活動集中於特定時段  
+    下方 Documents 區 顯示符合查詢條件的事件清單，包括欄位如 @timestamp, event.code, winlog.channel, agent.name, data_stream.dataset 等  
+    左側欄位區 提供可選欄位清單（Available fields），可勾選特定欄位以便聚焦分析重點資訊  
+  - 實際應用場景：
+    安全稽核與入侵偵測（例如：大量 Sysmon Event ID 1 的行程建立行為可能為惡意程式活動）  
+    建立 SIEM 規則與警示（例如：當特定帳號在異常時間建立可疑行程）  
+    調查與溯源攻擊事件（例如：從行程建立紀錄追蹤勒索軟體的初始執行路徑）  
+    驗證端點監控系統（如 Elastic Agent）是否成功收集並上傳 Sysmon 日誌
 
-### 10. 心得與結論
+![Screenshot 2025-05-06 at 1.41.09 AM](assets/21.png)
 
-透過本次實作，我們深入了解並成功建置了 ELK Stack 的核心架構，包括 Elasticsearch、Kibana、Fleet Server 與 Elastic Agent，並分別在 Linux 與 Windows 主機上完成了 Agent 安裝與註冊。整體過程中，雖遇到版本相依性、資源消耗與網路設定等挑戰，但在小組協作與反覆測試下，最終成功讓整個 SIEM 系統穩定運作。
+### 11. KQL 事件查詢
 
-特別是在 Fleet 與 Elastic Agent 的整合部分，我們更進一步理解到現代資安監控架構的彈性與集中管理的效率。例如：透過 Fleet Policy 可以統一設定日誌與指標收集模組，並即時監控 Agent 的狀態與效能，這對於大型企業或多主機環境的資安管理具有極高實用價值。
+#### 11.1 Linux 事件查詢
 
-此外，藉由實際瀏覽 Data Streams、Discover 與撰寫 KQL 查詢，我們不僅體驗到資料如何從端點流入 Elasticsearch，還能透過 Kibana 進行有效的視覺化分析與查詢操作。這樣的流程使我們更能體會「資料可視化」在資安事件調查中的關鍵地位。
+- 查詢 `elk` 用戶的所有事件
 
-總結來說，這次作業不僅增進了我們對 SIEM 系統架構與原理的理解，也強化了實務操作與故障排除的能力。未來若需進行更進階的威脅偵測、自動化回應（SOAR）或結合機器學習進行異常行為分析，ELK Stack 都是一個非常具潛力與可擴充性的基礎平台。
+  ```
+  event.module: "auditd" and user.name: "elk"
+  ```
+
+![Screenshot 2025-05-06 at 2.24.20 AM](assets/24.png)
+
+- 查詢 `sudo` 命令的使用紀錄
+
+  ```kql
+  event.module : "auditd" and process.executable.text: "*sudo*"
+  ```
+
+ ![Screenshot 2025-05-06 at 2.32.17 AM](assets/25.png)
+
+#### 11.2 Windows 事件查詢
+
+- 查詢系統登入成功紀錄
+
+  ```kql
+  event.code : "4624" and winlog.event_data.LogonType : "5"
+  ```
+
+![Screenshot 2025-05-06 at 2.05.15 AM](assets/22.png)
+
+- 查詢登入失敗的紀錄
+
+  ```kql
+  event.code: "4625"
+  ```
+
+![Screenshot 2025-05-06 at 2.06.40 AM](assets/23.png)
+
+### 12. 心得與結論
+
+​	透過本次實作，我們深入了解並成功建置了 ELK Stack 的核心架構，包括 Elasticsearch、Kibana、Fleet Server 與 Elastic Agent，並分別在 Linux 與 Windows 主機上完成了 Agent 安裝與註冊。整體過程中，雖遇到版本相依性、資源消耗與網路設定等挑戰，但在小組協作與反覆測試下，最終成功讓整個 SIEM 系統穩定運作。
+
+​	特別是在 Fleet 與 Elastic Agent 的整合部分，我們更進一步理解到現代資安監控架構的彈性與集中管理的效率。例如：透過 Fleet Policy 可以統一設定日誌與指標收集模組，並即時監控 Agent 的狀態與效能，這對於大型企業或多主機環境的資安管理具有極高實用價值。
+
+​	此外，藉由實際瀏覽 Data Streams、Discover 與撰寫 KQL 查詢，我們不僅體驗到資料如何從端點流入 Elasticsearch，還能透過 Kibana 進行有效的視覺化分析與查詢操作。這樣的流程使我們更能體會「資料可視化」在資安事件調查中的關鍵地位。
+
+​	這次作業不僅增進了我們對 SIEM 系統架構與原理的理解，也強化了實務操作與故障排除的能力。未來若需進行更進階的威脅偵測、自動化回應（SOAR）或結合機器學習進行異常行為分析，ELK Stack 都是一個非常具潛力與可擴充性的基礎平台。
